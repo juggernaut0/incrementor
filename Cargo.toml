@@ -5,3 +5,7 @@ authors = ["Tom Warner <tomwamt@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+actix-web = "1.0"
+postgres = "0.15"
+r2d2 = "0.8"
+r2d2_postgres = "0.14"
