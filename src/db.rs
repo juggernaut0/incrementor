@@ -1,8 +1,23 @@
 use r2d2_postgres::{PostgresConnectionManager, TlsMode};
 use r2d2::Pool;
+use uuid::Uuid;
 
 pub struct DataAccess {
     pool: Pool<PostgresConnectionManager>,
+}
+
+impl DataAccess {
+    pub fn new(config: &Config) -> Result<DataAccess, Error> {
+        Ok(DataAccess {
+            pool: create_pool(config)?,
+        })
+    }
+
+    pub fn insert_api_key(&self, email: &str, hashed_key: &str) -> Result<Uuid, Error> {
+        let id = Uuid::new_v4();
+        self.pool.get()?.execute("INSERT INTO api_key(id, email, hashed_key) VALUES ($1, $2, $3);", &[&id, &email, &hashed_key])?;
+        Ok(id)
+    }
 }
 
 #[derive(Debug)]
@@ -20,21 +35,6 @@ impl From<postgres::Error> for Error {
 impl From<r2d2::Error> for Error {
     fn from(e: r2d2::Error) -> Self {
         Error::R2D2Error(e)
-    }
-}
-
-impl DataAccess {
-    pub fn new(config: &Config) -> Result<DataAccess, Error> {
-        Ok(DataAccess {
-            pool: create_pool(config)?,
-        })
-    }
-
-    pub fn test_call(&self) {
-        let conn = self.pool.get().unwrap();
-        let rows = conn.query("SELECT 'hello world'", &[]).unwrap();
-        let value: String = rows.get(0).get(0);
-        println!("test_call: result = {}", value);
     }
 }
 

@@ -1,24 +1,20 @@
-use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{web, App, HttpServer};
 use crate::db::DataAccess;
 
+mod api_v1;
 mod db;
 
 struct AppData {
     db: DataAccess,
 }
 
-fn hello(name: web::Path<String>, data: web::Data<AppData>) -> String {
-    data.db.test_call();
-    format!("Hello {}!", name)
-}
-
 fn config(cfg: &mut web::ServiceConfig) {
-    cfg.route("/hello/{name}", web::get().to(hello));
+    api_v1::configure(cfg);
 }
 
 fn main() {
     HttpServer::new(|| {
-        let db_config = db::Config::new("localhost", 5432, "postgres", "postgres", "");
+        let db_config = db::Config::new("localhost", 5432, "incrementor", "incrementor", "inc");
         App::new()
             .data(AppData {
                 db: DataAccess::new(&db_config).unwrap()
