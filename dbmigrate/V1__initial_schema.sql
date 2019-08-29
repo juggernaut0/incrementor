@@ -1,7 +1,7 @@
 CREATE TABLE api_key (
     id uuid UNIQUE PRIMARY KEY,
     email text NOT NULL,
-    hashed_key text NOT NULL
+    hashed_key bytea NOT NULL
 );
 
 CREATE TABLE inc_sequence (

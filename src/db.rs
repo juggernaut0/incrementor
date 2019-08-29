@@ -13,7 +13,7 @@ impl DataAccess {
         })
     }
 
-    pub fn insert_api_key(&self, email: &str, hashed_key: &str) -> Result<Uuid, Error> {
+    pub fn insert_api_key(&self, email: &str, hashed_key: &[u8]) -> Result<Uuid, Error> {
         let id = Uuid::new_v4();
         self.pool.get()?.execute("INSERT INTO api_key(id, email, hashed_key) VALUES ($1, $2, $3);", &[&id, &email, &hashed_key])?;
         Ok(id)
