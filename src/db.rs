@@ -43,6 +43,11 @@ impl<'conn> Tx<'conn> {
             &[&id, &email, &prefix, &hashed_key])?;
         Ok(id)
     }
+
+    pub fn email_exists(&self, email: &str) -> Result<bool, Error> {
+        let rows = self.tx.query("SELECT COUNT(id) FROM api_key WHERE email = $1", &[&email])?;
+        Ok(rows.len() > 0)
+    }
 }
 
 #[derive(Debug)]
@@ -63,24 +68,24 @@ impl From<r2d2::Error> for Error {
     }
 }
 
-pub enum TxError<E : IntoTxError> {
+pub enum TxError<E> {
     DbError(Error),
     InnerError(E)
 }
 
-impl<E : IntoTxError> From<postgres::Error> for TxError<E> {
+impl<E> From<postgres::Error> for TxError<E> {
     fn from(e: postgres::Error) -> Self {
         From::from(Error::PostgresError(e))
     }
 }
 
-impl<E : IntoTxError> From<r2d2::Error> for TxError<E> {
+impl<E> From<r2d2::Error> for TxError<E> {
     fn from(e: r2d2::Error) -> Self {
         From::from(Error::R2D2Error(e))
     }
 }
 
-impl<E : IntoTxError> From<Error> for TxError<E> {
+impl<E> From<Error> for TxError<E> {
     fn from(e: Error) -> Self {
         TxError::DbError(e)
     }

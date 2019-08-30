@@ -4,6 +4,7 @@ use log::Level;
 
 mod api_v1;
 mod db;
+mod util;
 
 struct AppData {
     db: DataAccess,
