@@ -1,5 +1,6 @@
-use r2d2_postgres::{PostgresConnectionManager, TlsMode};
+use postgres::transaction::Transaction;
 use r2d2::Pool;
+use r2d2_postgres::{PostgresConnectionManager, TlsMode};
 use uuid::Uuid;
 
 pub struct DataAccess {
@@ -13,9 +14,33 @@ impl DataAccess {
         })
     }
 
-    pub fn insert_api_key(&self, email: &str, hashed_key: &[u8]) -> Result<Uuid, Error> {
+    pub fn with_transaction<F, T, E>(&self, f: F) -> Result<T, TxError<E>>
+        where F : FnOnce(&Tx) -> Result<T, TxError<E>>,
+              E : IntoTxError {
+        let conn = self.pool.get()?;
+        let tx = conn.transaction()?.into();
+        let ret = f(&tx)?;
+        tx.tx.commit()?;
+        Ok(ret)
+    }
+}
+
+pub struct Tx<'conn> {
+    tx: Transaction<'conn>,
+}
+
+impl<'conn> From<Transaction<'conn>> for Tx<'conn> {
+    fn from(tx: Transaction<'conn>) -> Tx<'conn> {
+        Tx { tx }
+    }
+}
+
+impl<'conn> Tx<'conn> {
+    pub fn insert_api_key(&self, email: &str, prefix: &[u8], hashed_key: &[u8]) -> Result<Uuid, Error> {
         let id = Uuid::new_v4();
-        self.pool.get()?.execute("INSERT INTO api_key(id, email, hashed_key) VALUES ($1, $2, $3);", &[&id, &email, &hashed_key])?;
+        self.tx.execute(
+            "INSERT INTO api_key(id, email, prefix, hashed_key, created_dt) VALUES ($1, $2, $3, $4, NOW());",
+            &[&id, &email, &prefix, &hashed_key])?;
         Ok(id)
     }
 }
@@ -37,6 +62,39 @@ impl From<r2d2::Error> for Error {
         Error::R2D2Error(e)
     }
 }
+
+pub enum TxError<E : IntoTxError> {
+    DbError(Error),
+    InnerError(E)
+}
+
+impl<E : IntoTxError> From<postgres::Error> for TxError<E> {
+    fn from(e: postgres::Error) -> Self {
+        From::from(Error::PostgresError(e))
+    }
+}
+
+impl<E : IntoTxError> From<r2d2::Error> for TxError<E> {
+    fn from(e: r2d2::Error) -> Self {
+        From::from(Error::R2D2Error(e))
+    }
+}
+
+impl<E : IntoTxError> From<Error> for TxError<E> {
+    fn from(e: Error) -> Self {
+        TxError::DbError(e)
+    }
+}
+
+impl<E : IntoTxError> From<E> for TxError<E> {
+    fn from(e: E) -> Self {
+        TxError::InnerError(e)
+    }
+}
+
+pub trait IntoTxError {}
+
+impl IntoTxError for () {}
 
 pub struct Config {
     host: String,

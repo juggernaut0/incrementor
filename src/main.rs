@@ -1,5 +1,6 @@
 use actix_web::{web, App, HttpServer};
 use crate::db::DataAccess;
+use log::Level;
 
 mod api_v1;
 mod db;
@@ -13,6 +14,8 @@ fn config(cfg: &mut web::ServiceConfig) {
 }
 
 fn main() {
+    simple_logger::init_with_level(Level::Debug).unwrap();
+
     HttpServer::new(|| {
         let db_config = db::Config::new("localhost", 5432, "incrementor", "incrementor", "inc");
         App::new()
