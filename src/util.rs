@@ -22,6 +22,10 @@ impl WebApplicationError {
             msg: msg.to_string()
         }
     }
+
+    pub fn unauthorized() -> WebApplicationError {
+        WebApplicationError::new(StatusCode::UNAUTHORIZED)
+    }
 }
 
 impl IntoTxError for WebApplicationError {}

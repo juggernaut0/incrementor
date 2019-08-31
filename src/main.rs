@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use actix_web::{App, HttpServer, web};
+use actix_web::middleware::Logger;
 use log::Level;
 
 use crate::db::DataAccess;
@@ -19,7 +20,7 @@ fn config(cfg: &mut web::ServiceConfig) {
 }
 
 fn main() {
-    simple_logger::init_with_level(Level::Debug).unwrap();
+    simple_logger::init_with_level(Level::Info).unwrap();
 
     let db_config = db::Config::new("localhost", 5432, "incrementor", "incrementor", "inc");
     let data = AppData {
@@ -29,6 +30,7 @@ fn main() {
     HttpServer::new(move || {
         App::new()
             .data(data.clone())
+            .wrap(Logger::new("%a \"%r\" %s %b %D"))
             .configure(config)
     })
         .bind("127.0.0.1:8088")

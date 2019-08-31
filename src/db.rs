@@ -39,7 +39,7 @@ impl<'conn> Tx<'conn> {
     pub fn insert_api_key(&self, email: &str, prefix: &[u8], hashed_key: &[u8]) -> Result<Uuid, Error> {
         let id = Uuid::new_v4();
         self.tx.execute(
-            "INSERT INTO api_key(id, email, prefix, hashed_key, created_dt) VALUES ($1, $2, $3, $4, NOW());",
+            "INSERT INTO api_key(id, email, prefix, hashed_key, created_dt) VALUES ($1, $2, $3, $4, NOW())",
             &[&id, &email, &prefix, &hashed_key])?;
         Ok(id)
     }
@@ -48,6 +48,43 @@ impl<'conn> Tx<'conn> {
         let rows = self.tx.query("SELECT COUNT(id) FROM api_key WHERE email = $1", &[&email])?;
         let count: i64 = rows.get(0).get_opt(0).unwrap()?;
         Ok(count > 0)
+    }
+
+    pub fn get_user_id_by_key(&self, prefix: &[u8], hashed_key: &[u8]) -> Result<Option<Uuid>, Error> {
+        let rows = self.tx.query(
+            "SELECT id FROM api_key WHERE prefix = $1 AND hashed_key = $2",
+            &[&prefix, &hashed_key])?;
+        if rows.len() == 0 {
+            return Ok(None)
+        }
+        let first = rows.get(0);
+        Ok(Some(first.get_opt(0).unwrap()?))
+    }
+
+    pub fn get_counter_by_tag(&self, owner_id: Uuid, tag: &str) -> Result<Option<(Uuid, i64)>, Error> {
+        let rows = self.tx.query(
+            "SELECT id, counter_value FROM counter WHERE owner_id = $1 AND tag = $2 FOR UPDATE",
+            &[&owner_id, &tag])?;
+        if rows.len() == 0 {
+            return Ok(None)
+        }
+        let first = rows.get(0);
+        Ok(Some((first.get_opt(0).unwrap()?, first.get_opt(1).unwrap()?)))
+    }
+
+    pub fn create_counter(&self, owner_id: Uuid, tag: &str, initial: i64) -> Result<(), Error> {
+        let id = Uuid::new_v4();
+        self.tx.execute(
+            "INSERT INTO counter(id, owner_id, tag, counter_value) VALUES ($1, $2, $3, $4)",
+            &[&id, &owner_id, &tag, &initial])?;
+        Ok(())
+    }
+
+    pub fn update_counter(&self, counter_id: Uuid, value: i64) -> Result<(), Error> {
+        self.tx.execute(
+            "UPDATE counter SET counter_value = $1, last_updated = NOW() WHERE id = $2",
+            &[&value, &counter_id])?;
+        Ok(())
     }
 }
 
