@@ -42,7 +42,7 @@ fn get_counter(data: web::Data<AppData>, tag: web::Path<String>, req: HttpReques
     data.db.with_transaction(|tx| {
         let (prefix, hashed_key) = extract_key(auth_header)?;
         let owner_id = tx.get_user_id_by_key(&prefix, &hashed_key)?.ok_or_else(|| WebApplicationError::unauthorized())?;
-        let value = tx.get_counter_by_tag(owner_id, &tag)?.map(|(_, v)| v).unwrap_or(0);
+        let value = tx.get_counter_by_tag_locking(owner_id, &tag)?.map(|(_, v)| v).unwrap_or(0);
         Ok(value.to_string())
     }).map_err(unwrap_tx_error)
 }
@@ -52,15 +52,21 @@ fn inc_counter(data: web::Data<AppData>, tag: web::Path<String>, req: HttpReques
     data.db.with_transaction(|tx| {
         let (prefix, hashed_key) = extract_key(auth_header)?;
         let owner_id = tx.get_user_id_by_key(&prefix, &hashed_key)?.ok_or_else(|| WebApplicationError::unauthorized())?;
-        let counter = tx.get_counter_by_tag(owner_id, &tag)?;
-        let value = if let Some((counter_id, value)) = counter {
-            let new_value = value + 1;
-            tx.update_counter(counter_id, new_value)?;
-            new_value
-        } else {
-            let initial = 1;
-            tx.create_counter(owner_id, &tag, initial)?;
-            initial
+        let value = loop {
+            let counter = tx.get_counter_by_tag_locking(owner_id, &tag)?;
+            break if let Some((counter_id, value)) = counter {
+                let new_value = value + 1; // safe because db lock is acquired here
+                tx.update_counter(counter_id, new_value)?;
+                new_value
+            } else {
+                let initial = 1;
+                if tx.create_counter(owner_id, &tag, initial)? {
+                    initial
+                } else {
+                    log::warn!("Failed to create counter, trying update");
+                    continue
+                }
+            }
         };
         Ok(value.to_string())
     }).map_err(unwrap_tx_error)

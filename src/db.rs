@@ -61,7 +61,7 @@ impl<'conn> Tx<'conn> {
         Ok(Some(first.get_opt(0).unwrap()?))
     }
 
-    pub fn get_counter_by_tag(&self, owner_id: Uuid, tag: &str) -> Result<Option<(Uuid, i64)>, Error> {
+    pub fn get_counter_by_tag_locking(&self, owner_id: Uuid, tag: &str) -> Result<Option<(Uuid, i64)>, Error> {
         let rows = self.tx.query(
             "SELECT id, counter_value FROM counter WHERE owner_id = $1 AND tag = $2 FOR UPDATE",
             &[&owner_id, &tag])?;
@@ -72,12 +72,13 @@ impl<'conn> Tx<'conn> {
         Ok(Some((first.get_opt(0).unwrap()?, first.get_opt(1).unwrap()?)))
     }
 
-    pub fn create_counter(&self, owner_id: Uuid, tag: &str, initial: i64) -> Result<(), Error> {
+    pub fn create_counter(&self, owner_id: Uuid, tag: &str, initial: i64) -> Result<bool, Error> {
         let id = Uuid::new_v4();
-        self.tx.execute(
-            "INSERT INTO counter(id, owner_id, tag, counter_value) VALUES ($1, $2, $3, $4)",
+        let rows_affected = self.tx.execute(
+            "INSERT INTO counter(id, owner_id, tag, counter_value) VALUES ($1, $2, $3, $4) \
+            ON CONFLICT DO NOTHING",
             &[&id, &owner_id, &tag, &initial])?;
-        Ok(())
+        Ok(rows_affected > 0)
     }
 
     pub fn update_counter(&self, counter_id: Uuid, value: i64) -> Result<(), Error> {

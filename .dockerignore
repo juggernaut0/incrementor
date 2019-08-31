@@ -1,4 +1,7 @@
 .git
 .gitignore
 compose
+dbmigrate
+dc
+Dockerfile
 target
