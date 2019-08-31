@@ -1,0 +1,27 @@
+version: "3"
+services:
+  incrementor:
+    build: ..
+    ports:
+      - 9001:9001
+    depends_on:
+      - dbmigrate
+    env_file:
+      - ./db.env
+
+  dbmigrate:
+    image: flyway/flyway:6
+    depends_on:
+      - postgres
+    env_file:
+      - ./db.env
+    volumes:
+      - ../dbmigrate:/flyway/sql:ro
+    entrypoint: ["sh", "-c", "/flyway/flyway -user=$$DB_USER -password=$$DB_PASS -url=jdbc:postgresql://$$DB_HOST:$$DB_PORT/$$DB_NAME -connectRetries=60 migrate"]
+
+  postgres:
+    image: postgres:11
+    ports:
+      - 5432:5432
+    volumes:
+      - ./init_db.sql:/docker-entrypoint-initdb.d/init_db.sql:ro

@@ -22,7 +22,8 @@ fn config(cfg: &mut web::ServiceConfig) {
 fn main() {
     simple_logger::init_with_level(Level::Info).unwrap();
 
-    let db_config = db::Config::new("localhost", 5432, "incrementor", "incrementor", "inc");
+    let db_config = db::Config::new_from_env()
+        .unwrap_or_else(|| db::Config::new("localhost", 5432, "incrementor", "incrementor", "inc"));
     let data = AppData {
         db: Arc::new(DataAccess::new(&db_config).unwrap())
     };
@@ -33,7 +34,7 @@ fn main() {
             .wrap(Logger::new("%a \"%r\" %s %b %D"))
             .configure(config)
     })
-        .bind("127.0.0.1:8088")
+        .bind("0.0.0.0:9001")
         .unwrap()
         .run()
         .unwrap();

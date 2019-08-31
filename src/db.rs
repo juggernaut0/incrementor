@@ -157,6 +157,17 @@ impl Config {
             password: password.to_string()
         }
     }
+
+    pub fn new_from_env() -> Option<Config> {
+        use std::env::var;
+        Some(Config {
+            host: var("DB_HOST").ok()?,
+            port: var("DB_PORT").ok()?.parse().ok()?,
+            database: var("DB_NAME").ok()?,
+            username: var("DB_USER").ok()?,
+            password: var("DB_PASS").ok()?
+        })
+    }
 }
 
 fn create_pool(config: &Config) -> Result<Pool<PostgresConnectionManager>, Error> {
