@@ -46,7 +46,8 @@ impl<'conn> Tx<'conn> {
 
     pub fn email_exists(&self, email: &str) -> Result<bool, Error> {
         let rows = self.tx.query("SELECT COUNT(id) FROM api_key WHERE email = $1", &[&email])?;
-        Ok(rows.len() > 0)
+        let count: i64 = rows.get(0).get_opt(0).unwrap()?;
+        Ok(count > 0)
     }
 }
 
@@ -122,6 +123,7 @@ impl Config {
 }
 
 fn create_pool(config: &Config) -> Result<Pool<PostgresConnectionManager>, Error> {
+    log::info!("Creating connection pool...");
     let url = format!("postgresql://{}:{}@{}:{}/{}", config.username, config.password, config.host, config.port, config.database);
     let manager = PostgresConnectionManager::new(url, TlsMode::None)?;
     Pool::new(manager).map_err(|e| From::from(e))
