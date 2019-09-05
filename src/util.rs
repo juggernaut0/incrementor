@@ -3,7 +3,7 @@ use std::fmt::{self, Display, Formatter};
 use actix_web::{HttpResponse, ResponseError};
 use actix_web::http::StatusCode;
 
-use crate::db::IntoTxError;
+use crate::db::{IntoTxError, TxError};
 
 #[derive(Debug)]
 pub struct WebApplicationError {
@@ -39,5 +39,15 @@ impl Display for WebApplicationError {
 impl ResponseError for WebApplicationError {
     fn error_response(&self) -> HttpResponse {
         HttpResponse::build(self.status).content_type("text/plain; charset=utf-8").body(&self.msg)
+    }
+}
+
+pub fn unwrap_tx_error(txe: TxError<WebApplicationError>) -> WebApplicationError {
+    match txe {
+        TxError::DbError(e) => {
+            log::error!("{:#?}", e);
+            WebApplicationError::new(StatusCode::INTERNAL_SERVER_ERROR)
+        },
+        TxError::InnerError(e) => e,
     }
 }

@@ -12,6 +12,6 @@ CREATE TABLE counter (
     owner_id uuid NOT NULL REFERENCES api_key(id),
     tag text NOT NULL,
     counter_value bigint NOT NULL,
-    last_updated TIMESTAMP,
+    last_updated TIMESTAMP NOT NULL,
     UNIQUE (owner_id, tag)
 );

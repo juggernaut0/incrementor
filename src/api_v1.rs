@@ -1,11 +1,10 @@
-use actix_web::{web, HttpRequest};
-use actix_web::http::{StatusCode, HeaderValue};
+use actix_web::{HttpRequest, web};
+use actix_web::http::{HeaderValue, StatusCode};
 use rand::Rng;
 use sha2::{Digest, Sha256};
 
 use crate::AppData;
-use crate::db::TxError;
-use crate::util::WebApplicationError;
+use crate::util::{unwrap_tx_error, WebApplicationError};
 
 pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(web::scope("/api/v1")
@@ -90,14 +89,4 @@ fn extract_key(auth: Option<&HeaderValue>) -> Result<(Vec<u8>, Vec<u8>), WebAppl
         let hashed = hash(&key);
         Some((prefix, hashed))
     }).ok_or_else(|| WebApplicationError::unauthorized())
-}
-
-fn unwrap_tx_error(txe: TxError<WebApplicationError>) -> WebApplicationError {
-    match txe {
-        TxError::DbError(e) => {
-            log::error!("{:#?}", e);
-            WebApplicationError::new(StatusCode::INTERNAL_SERVER_ERROR)
-        },
-        TxError::InnerError(e) => e,
-    }
 }

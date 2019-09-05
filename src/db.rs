@@ -75,7 +75,7 @@ impl<'conn> Tx<'conn> {
     pub fn create_counter(&self, owner_id: Uuid, tag: &str, initial: i64) -> Result<bool, Error> {
         let id = Uuid::new_v4();
         let rows_affected = self.tx.execute(
-            "INSERT INTO counter(id, owner_id, tag, counter_value) VALUES ($1, $2, $3, $4) \
+            "INSERT INTO counter(id, owner_id, tag, counter_value, last_updated) VALUES ($1, $2, $3, $4, NOW()) \
             ON CONFLICT DO NOTHING",
             &[&id, &owner_id, &tag, &initial])?;
         Ok(rows_affected > 0)
