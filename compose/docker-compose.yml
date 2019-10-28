@@ -10,7 +10,7 @@ services:
       - ./db.env
 
   dbmigrate:
-    image: flyway/flyway:6
+    build: ../dbmigrate
     depends_on:
       - postgres
     env_file:

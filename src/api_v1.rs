@@ -13,12 +13,19 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .route(web::get().to(get_counter))
             .route(web::post().to(inc_counter))
         )
-    );
+    ).route("/health", web::get().to(health_check));
 }
 
 #[derive(serde::Deserialize)]
 struct Email {
     email: String,
+}
+
+fn health_check(data: web::Data<AppData>) -> Result<String, WebApplicationError> {
+    data.db.with_transaction(|tx| {
+        tx.health_check()?;
+        Ok("imok".to_string())
+    }).map_err(unwrap_tx_error)
 }
 
 fn gen_key(data: web::Data<AppData>, email: web::Query<Email>) -> Result<String, WebApplicationError> {

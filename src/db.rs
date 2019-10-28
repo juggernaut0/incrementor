@@ -36,6 +36,11 @@ impl<'conn> From<Transaction<'conn>> for Tx<'conn> {
 }
 
 impl<'conn> Tx<'conn> {
+    pub fn health_check(&self) -> Result<(), Error> {
+        self.tx.query("SELECT 1", &[])?;
+        Ok(())
+    }
+
     pub fn insert_api_key(&self, email: &str, prefix: &[u8], hashed_key: &[u8]) -> Result<Uuid, Error> {
         let id = Uuid::new_v4();
         self.tx.execute(
